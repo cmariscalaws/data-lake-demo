@@ -108,7 +108,6 @@ class OptionAStack(Stack):
                     "api-d": "https://example.com/api-d",
                 }),
             },
-            reserved_concurrent_executions=16,
         )
         data_lake.grant_read(worker_fn)
         data_lake.grant_put(worker_fn)
@@ -121,7 +120,7 @@ class OptionAStack(Stack):
             q.grant_consume_messages(worker_fn)
 
         # Glue Database & Crawler
-        db = glue.Database(self, "DataLakeDb", database_name="option_a_demo_db")
+        db = glue.CfnDatabase(self, "DataLakeDb", catalog_id=self.account, database_input=glue.CfnDatabase.DatabaseInputProperty(name="option_a_demo_db"))
 
         crawler_role = iam.Role(self, "CrawlerRole", assumed_by=iam.ServicePrincipal("glue.amazonaws.com"))
         data_lake.grant_read(crawler_role)
@@ -130,10 +129,10 @@ class OptionAStack(Stack):
         crawler = glue.CfnCrawler(
             self, "RawCrawler",
             role=crawler_role.role_arn,
-            database_name=db.database_name,
+            database_name="option_a_demo_db",
             name="option-a-raw-crawler",
             targets=glue.CfnCrawler.TargetsProperty(
-                s3_targets=[glue.CfnCrawler.S3TargetProperty(path=f"{data_lake.bucket_arn}/raw/")]
+                s3_targets=[glue.CfnCrawler.S3TargetProperty(path=f"s3://{data_lake.bucket_name}/raw/")]
             ),
             schedule=glue.CfnCrawler.ScheduleProperty(schedule_expression="cron(15 1 * * ? *)"),
             schema_change_policy=glue.CfnCrawler.SchemaChangePolicyProperty(
@@ -189,7 +188,7 @@ class OptionAStack(Stack):
         # Outputs
         cdk.CfnOutput(self, "DataLakeBucketName", value=data_lake.bucket_name)
         cdk.CfnOutput(self, "AthenaResultsBucketName", value=athena_results.bucket_name)
-        cdk.CfnOutput(self, "GlueDatabaseName", value=db.database_name)
+        cdk.CfnOutput(self, "GlueDatabaseName", value="option_a_demo_db")
         cdk.CfnOutput(self, "GlueCrawlerName", value=crawler.name or "option-a-raw-crawler")
         cdk.CfnOutput(self, "WorkGroupName", value=wg.name or "option_a_demo_wg")
         cdk.CfnOutput(self, "PlannerFunctionName", value=planner_fn.function_name)

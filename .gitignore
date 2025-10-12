@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# cdk
+cdk.out/
+/option_a_cdk_py/cdk.out
