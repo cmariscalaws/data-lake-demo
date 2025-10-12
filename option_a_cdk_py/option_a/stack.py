@@ -124,6 +124,19 @@ class OptionAStack(Stack):
 
         crawler_role = iam.Role(self, "CrawlerRole", assumed_by=iam.ServicePrincipal("glue.amazonaws.com"))
         data_lake.grant_read(crawler_role)
+        
+        # Add CloudWatch Logs permissions for crawler
+        crawler_role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams"
+            ],
+            resources=["arn:aws:logs:*:*:*"]
+        ))
 
         # Use L1 for crawler for full control
         crawler = glue.CfnCrawler(
