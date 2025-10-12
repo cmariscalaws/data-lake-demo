@@ -137,6 +137,29 @@ class OptionAStack(Stack):
             ],
             resources=["arn:aws:logs:*:*:*"]
         ))
+        
+        # Add Glue Data Catalog permissions for crawler
+        crawler_role.add_to_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:CreateTable",
+                "glue:UpdateTable",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:DeleteTable",
+                "glue:BatchCreatePartition",
+                "glue:BatchDeletePartition",
+                "glue:GetPartition",
+                "glue:GetPartitions",
+                "glue:BatchGetPartition",
+                "glue:CreatePartition",
+                "glue:UpdatePartition",
+                "glue:DeletePartition"
+            ],
+            resources=["*"]
+        ))
 
         # Use L1 for crawler for full control
         crawler = glue.CfnCrawler(
