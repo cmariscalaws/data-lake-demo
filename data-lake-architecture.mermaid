@@ -1,0 +1,121 @@
+    graph TB
+    %% External APIs
+    API1[API-A<br/>External Data Source]
+    API2[API-B<br/>External Data Source]
+    API3[API-C<br/>External Data Source]
+    API4[API-D<br/>External Data Source]
+
+    %% EventBridge Schedule
+    EB[EventBridge<br/>Cron Rule<br/>Every 5 minutes]
+
+    %% Lambda Functions
+    PLANNER[Planner Lambda<br/>Python 3.12<br/>256MB Memory<br/>60s Timeout]
+
+    %% SQS Queues
+    SQS1[SQS Queue<br/>API-A Queue<br/>4 days retention]
+    SQS2[SQS Queue<br/>API-B Queue<br/>4 days retention]
+    SQS3[SQS Queue<br/>API-C Queue<br/>4 days retention]
+    SQS4[SQS Queue<br/>API-D Queue<br/>4 days retention]
+
+    %% Dead Letter Queues
+    DLQ1[Dead Letter Queue<br/>API-A DLQ<br/>14 days retention]
+    DLQ2[Dead Letter Queue<br/>API-B DLQ<br/>14 days retention]
+    DLQ3[Dead Letter Queue<br/>API-C DLQ<br/>14 days retention]
+    DLQ4[Dead Letter Queue<br/>API-D DLQ<br/>14 days retention]
+
+    %% Worker Lambda
+    WORKER[Worker Lambda<br/>Python 3.12<br/>512MB Memory<br/>180s Timeout<br/>Batch Size: 2]
+
+    %% S3 Buckets
+    DATALAKE[(S3 Data Lake Bucket<br/>KMS Encrypted<br/>Versioned<br/>SSL Enforced)]
+    ATHENA_RESULTS[(S3 Athena Results<br/>S3-Managed Encryption<br/>30-day Lifecycle<br/>SSL Enforced)]
+
+    %% Glue Components
+    GLUE_CRAWLER[Glue Crawler<br/>option-a-raw-crawler<br/>Every 10 minutes]
+    GLUE_DB[(Glue Database<br/>option_a_demo_db)]
+    GLUE_CATALOG[Glue Data Catalog<br/>Schema Discovery]
+
+    %% Athena
+    ATHENA[Amazon Athena<br/>WorkGroup: option_a_demo_wg<br/>Query Engine]
+
+    %% CloudWatch
+    CW_LOGS[CloudWatch Logs<br/>Lambda & Crawler Logs]
+    CW_METRICS[CloudWatch Metrics<br/>SQS & Lambda Monitoring]
+    CW_ALARMS[CloudWatch Alarms<br/>DLQ & Age Monitoring]
+
+    %% KMS
+    KMS_KEY[KMS Key<br/>Data Lake Encryption<br/>Key Rotation Enabled]
+
+    %% IAM Roles
+    PLANNER_ROLE[IAM Role<br/>Planner Lambda<br/>SQS Send Permissions]
+    WORKER_ROLE[IAM Role<br/>Worker Lambda<br/>S3 & SQS Permissions]
+    CRAWLER_ROLE[IAM Role<br/>Glue Crawler<br/>S3, Glue, Logs Permissions]
+
+    %% Data Flow Connections
+    EB -->|Triggers| PLANNER
+    PLANNER -->|Sends Messages| SQS1
+    PLANNER -->|Sends Messages| SQS2
+    PLANNER -->|Sends Messages| SQS3
+    PLANNER -->|Sends Messages| SQS4
+
+    SQS1 -->|Failed Messages| DLQ1
+    SQS2 -->|Failed Messages| DLQ2
+    SQS3 -->|Failed Messages| DLQ3
+    SQS4 -->|Failed Messages| DLQ4
+
+    SQS1 -->|Triggers| WORKER
+    SQS2 -->|Triggers| WORKER
+    SQS3 -->|Triggers| WORKER
+    SQS4 -->|Triggers| WORKER
+
+    WORKER -->|Fetches Data| API1
+    WORKER -->|Fetches Data| API2
+    WORKER -->|Fetches Data| API3
+    WORKER -->|Fetches Data| API4
+
+    WORKER -->|Writes Data| DATALAKE
+    GLUE_CRAWLER -->|Scans| DATALAKE
+    GLUE_CRAWLER -->|Updates Schema| GLUE_DB
+    GLUE_DB -->|Provides Schema| GLUE_CATALOG
+    GLUE_CATALOG -->|Schema Info| ATHENA
+    ATHENA -->|Query Results| ATHENA_RESULTS
+
+    %% IAM Role Assignments
+    PLANNER_ROLE -.->|Assumes| PLANNER
+    WORKER_ROLE -.->|Assumes| WORKER
+    CRAWLER_ROLE -.->|Assumes| GLUE_CRAWLER
+
+    %% Encryption
+    KMS_KEY -.->|Encrypts| DATALAKE
+
+    %% Monitoring
+    PLANNER -->|Logs| CW_LOGS
+    WORKER -->|Logs| CW_LOGS
+    GLUE_CRAWLER -->|Logs| CW_LOGS
+    SQS1 -->|Metrics| CW_METRICS
+    SQS2 -->|Metrics| CW_METRICS
+    SQS3 -->|Metrics| CW_METRICS
+    SQS4 -->|Metrics| CW_METRICS
+    DLQ1 -->|Alarms| CW_ALARMS
+    DLQ2 -->|Alarms| CW_ALARMS
+    DLQ3 -->|Alarms| CW_ALARMS
+    DLQ4 -->|Alarms| CW_ALARMS
+
+    %% Styling
+    classDef lambda fill:#ff9999,stroke:#333,stroke-width:2px
+    classDef s3 fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef sqs fill:#ffcc99,stroke:#333,stroke-width:2px
+    classDef glue fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef athena fill:#cc99ff,stroke:#333,stroke-width:2px
+    classDef monitoring fill:#ffff99,stroke:#333,stroke-width:2px
+    classDef external fill:#ffccff,stroke:#333,stroke-width:2px
+    classDef iam fill:#cccccc,stroke:#333,stroke-width:2px
+
+    class PLANNER,WORKER lambda
+    class DATALAKE,ATHENA_RESULTS s3
+    class SQS1,SQS2,SQS3,SQS4,DLQ1,DLQ2,DLQ3,DLQ4 sqs
+    class GLUE_CRAWLER,GLUE_DB,GLUE_CATALOG glue
+    class ATHENA athena
+    class CW_LOGS,CW_METRICS,CW_ALARMS monitoring
+    class API1,API2,API3,API4 external
+    class PLANNER_ROLE,WORKER_ROLE,CRAWLER_ROLE,KMS_KEY iam

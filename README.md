@@ -110,6 +110,8 @@ If the crawler inferred items as array<struct<id:string,value:bigint>>, cardinal
 EventBridge → SQS → Lambda → S3 (serverless & simple)
 
 ## Architecture (high level)
+![alt text](image.jpg)
+![data-lake-architecture](data-lake-architecture.png)
 
 [EventBridge (cron)]
         │
