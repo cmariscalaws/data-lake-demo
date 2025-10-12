@@ -83,7 +83,7 @@ class OptionAStack(Stack):
         # EventBridge cron
         rule = events.Rule(
             self, "CronRule",
-            schedule=events.Schedule.cron(minute="0", hour="1"),
+            schedule=events.Schedule.cron(minute="*/5"),
         )
         rule.add_target(targets.LambdaFunction(planner_fn))
 
@@ -134,7 +134,7 @@ class OptionAStack(Stack):
             targets=glue.CfnCrawler.TargetsProperty(
                 s3_targets=[glue.CfnCrawler.S3TargetProperty(path=f"s3://{data_lake.bucket_name}/raw/")]
             ),
-            schedule=glue.CfnCrawler.ScheduleProperty(schedule_expression="cron(15 1 * * ? *)"),
+            schedule=glue.CfnCrawler.ScheduleProperty(schedule_expression="cron(*/10 * * * ? *)"),
             schema_change_policy=glue.CfnCrawler.SchemaChangePolicyProperty(
                 update_behavior="UPDATE_IN_DATABASE",
                 delete_behavior="DEPRECATE_IN_DATABASE",
