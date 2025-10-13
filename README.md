@@ -2,7 +2,7 @@
 
 ## How to use
 
-1. unzip & set up a venv:
+1. set up a venv:
 
    ```bash
    cd option_a_cdk_py
