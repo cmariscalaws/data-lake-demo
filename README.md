@@ -5,7 +5,7 @@
 1. unzip & set up a venv:
 
    ```bash
-   unzip option_a_cdk_py.zip && cd option_a_cdk_py
+   cd option_a_cdk_py
    python -m venv .venv
    source .venv/bin/activate   # on Windows: .venv\Scripts\activate
    pip install -r requirements.txt
