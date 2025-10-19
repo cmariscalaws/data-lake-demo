@@ -61,21 +61,21 @@ After enabling Lake Formation RBAC, you'll need to set up additional permissions
 
 1. **Run the setup script**:
    ```bash
-   chmod +x scripts/setup_rbac_permissions.sh
-   ./scripts/setup_rbac_permissions.sh
+   chmod +x rbac-demo/setup_rbac_permissions.sh
+   ./rbac-demo/setup_rbac_permissions.sh
    ```
 
 2. **Test basic RBAC**:
    ```bash
-   python scripts/test_rbac.py
+   python rbac-demo/test_rbac.py
    ```
 
 3. **Run advanced RBAC demo**:
    ```bash
-   python scripts/demo_rbac.py --stack OptionAIngestionDemoPy
+   python rbac-demo/demo_rbac.py --stack OptionAIngestionDemoPy
    ```
 
-See [DEMO_RBAC_README.md](../scripts/DEMO_RBAC_README.md) for detailed setup instructions.
+See [rbac-demo/README.md](../rbac-demo/README.md) for complete RBAC demo guide.
 
 ## Clean up
 ```bash
