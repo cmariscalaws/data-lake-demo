@@ -1,0 +1,145 @@
+graph TB
+    %% Data Sources and Ingestion Flow
+    subgraph "Data Ingestion Pipeline"
+        EB[EventBridge<br/>Cron Trigger] --> PL[Planner Lambda<br/>Splits files]
+        PL --> SQ1[SQS Queue 1<br/>api-a/]
+        PL --> SQ2[SQS Queue 2<br/>api-b/]
+        PL --> SQ3[SQS Queue 3<br/>api-c/]
+        PL --> SQ4[SQS Queue 4<br/>api-d/]
+        
+        SQ1 --> WL1[Worker Lambda 1]
+        SQ2 --> WL2[Worker Lambda 2]
+        SQ3 --> WL3[Worker Lambda 3]
+        SQ4 --> WL4[Worker Lambda 4]
+        
+        WL1 --> DL[(Data Lake S3<br/>Encrypted with KMS)]
+        WL2 --> DL
+        WL3 --> DL
+        WL4 --> DL
+    end
+
+    %% Data Catalog and Processing
+    subgraph "Data Catalog & Processing"
+        DL --> GC[Glue Crawler<br/>Auto-discovery]
+        GC --> GD[(Glue Database<br/>option_a_demo_db)]
+        GD --> GT[(Glue Tables<br/>Partitioned by date)]
+    end
+
+    %% Lake Formation RBAC Architecture
+    subgraph "Lake Formation RBAC"
+        %% Administrators
+        LFA[Lake Formation<br/>Administrators]
+        LFA --> LFR[LFAdminRole<br/>Full LF permissions]
+        LFA --> CFN[CDK CloudFormation<br/>Execution Role<br/>Manual setup required]
+        
+        %% Data Location Registration
+        LFR --> DLR[Data Location<br/>Registration<br/>S3 bucket ARN]
+        DLR --> SLR[Service-Linked Role<br/>AWSServiceRoleForLakeFormationDataAccess]
+        
+        %% Analyst Roles
+        subgraph "Analyst Roles"
+            CR[AnalystCoreRole<br/>Limited Access<br/>No PII]
+            PR[AnalystPiiRole<br/>Full Access<br/>Including PII]
+        end
+        
+        %% Permissions Matrix
+        subgraph "Permission Grants"
+            %% Data Location Access
+            DLR -.->|DATA_LOCATION_ACCESS| CR
+            DLR -.->|DATA_LOCATION_ACCESS| PR
+            
+            %% Database Access
+            GD -.->|DESCRIBE| CR
+            GD -.->|DESCRIBE| PR
+            
+            %% Table Access
+            GT -.->|SELECT + Row Filter| CR
+            GT -.->|SELECT (Full)| PR
+        end
+        
+        %% Data Cells Filter (Row-level Security)
+        DCF[Data Cells Filter<br/>Row-level Security<br/>api-a, api-b only] -.->|Applies to| CR
+        GT -.->|Filtered Results| DCF
+    end
+
+    %% Athena Query Engine
+    subgraph "Athena Query Engine"
+        %% Workgroups
+        AWG1[Athena WorkGroup<br/>wg_core_read_demo<br/>Core Role Results]
+        AWG2[Athena WorkGroup<br/>wg_pii_read_demo<br/>PII Role Results]
+        
+        %% Results Storage
+        ARB[(Athena Results Bucket)]
+        ARB --> ARC[s3://bucket/core/<br/>Core Role Results]
+        ARB --> ARP[s3://bucket/pii/<br/>PII Role Results]
+        
+        %% Query Execution
+        CR -->|Assume Role| AWG1
+        PR -->|Assume Role| AWG2
+        AWG1 --> ARC
+        AWG2 --> ARP
+    end
+
+    %% Data Access Patterns
+    subgraph "Data Access Patterns"
+        %% Core Role Access
+        CR -->|Query with<br/>Row Filter| GT
+        GT -->|Filtered Data<br/>api-a, api-b only| CR
+        
+        %% PII Role Access  
+        PR -->|Query with<br/>Full Access| GT
+        GT -->|All Data<br/>api-a, api-b, api-c, api-d| PR
+    end
+
+    %% Security and Encryption
+    subgraph "Security & Encryption"
+        KMS[KMS Key<br/>Data Lake Encryption]
+        DL -.->|Encrypted with| KMS
+        
+        %% KMS Permissions
+        KMS -.->|kms:Decrypt<br/>kms:DescribeKey| SLR
+        KMS -.->|kms:Decrypt<br/>kms:DescribeKey| CR
+        KMS -.->|kms:Decrypt<br/>kms:DescribeKey| PR
+    end
+
+    %% Monitoring and Alarms
+    subgraph "Monitoring"
+        CWA[CloudWatch Alarms<br/>Queue Depth<br/>Lambda Errors<br/>Crawler Status]
+        CWA -.->|Monitors| SQ1
+        CWA -.->|Monitors| SQ2
+        CWA -.->|Monitors| SQ3
+        CWA -.->|Monitors| SQ4
+        CWA -.->|Monitors| WL1
+        CWA -.->|Monitors| WL2
+        CWA -.->|Monitors| WL3
+        CWA -.->|Monitors| WL4
+        CWA -.->|Monitors| GC
+    end
+
+    %% Demo Scripts and Testing
+    subgraph "RBAC Demo & Testing"
+        DS1[demo_rbac.py<br/>Advanced RBAC Demo<br/>Row/Column Security]
+        DS2[test_rbac.py<br/>Basic RBAC Test<br/>Role Assumption]
+        DS3[setup_rbac_permissions.sh<br/>Automated Setup<br/>Permission Configuration]
+        
+        DS1 -.->|Tests| CR
+        DS1 -.->|Tests| PR
+        DS2 -.->|Tests| CR
+        DS2 -.->|Tests| PR
+        DS3 -.->|Configures| LFR
+        DS3 -.->|Configures| CR
+        DS3 -.->|Configures| PR
+    end
+
+    %% Styling
+    classDef dataLake fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef role fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef permission fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef security fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef demo fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+
+    class DL,GD,GT,ARB dataLake
+    class CR,PR,LFR,CFN role
+    class DCF,AWG1,AWG2 permission
+    class KMS,SLR security
+    class DS1,DS2,DS3 demo
