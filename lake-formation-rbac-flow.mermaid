@@ -1,0 +1,87 @@
+graph LR
+    %% Lake Formation RBAC Flow
+    subgraph "Lake Formation RBAC Architecture"
+        %% Data Sources
+        S3[(S3 Data Lake<br/>Encrypted Data)]
+        
+        %% Lake Formation Core
+        LF[Lake Formation<br/>Service]
+        
+        %% Administrators
+        subgraph "Administrators"
+            LFA[LFAdminRole<br/>Full LF Control]
+            CFN[CDK CFN Role<br/>Manual Setup]
+        end
+        
+        %% Data Registration
+        DR[Data Location<br/>Registration]
+        SLR[Service-Linked Role<br/>AWSServiceRoleForLakeFormationDataAccess]
+        
+        %% Analyst Roles
+        subgraph "Analyst Roles"
+            CR[AnalystCoreRole<br/>Limited Access]
+            PR[AnalystPiiRole<br/>Full Access]
+        end
+        
+        %% Permissions
+        subgraph "Permission Types"
+            DLA[DATA_LOCATION_ACCESS<br/>S3 Bucket Access]
+            DB[DESCRIBE<br/>Database Access]
+            SEL[SELECT<br/>Table Access]
+            DCF[Data Cells Filter<br/>Row-level Security]
+        end
+        
+        %% Athena Workgroups
+        subgraph "Athena Workgroups"
+            AWG1[wg_core_read_demo<br/>Core Results]
+            AWG2[wg_pii_read_demo<br/>PII Results]
+        end
+        
+        %% Results Storage
+        ARC[s3://bucket/core/<br/>Core Role Results]
+        ARP[s3://bucket/pii/<br/>PII Role Results]
+    end
+
+    %% Connections
+    S3 --> DR
+    DR --> SLR
+    LF --> DR
+    
+    LFA --> LF
+    CFN --> LF
+    
+    LF -.->|Grants| DLA
+    LF -.->|Grants| DB
+    LF -.->|Grants| SEL
+    LF -.->|Grants| DCF
+    
+    DLA -.->|Access| CR
+    DLA -.->|Access| PR
+    DB -.->|Access| CR
+    DB -.->|Access| PR
+    SEL -.->|Limited| CR
+    SEL -.->|Full| PR
+    DCF -.->|Row Filter| CR
+    
+    CR -->|Assume| AWG1
+    PR -->|Assume| AWG2
+    
+    AWG1 --> ARC
+    AWG2 --> ARP
+    
+    %% Data Flow
+    S3 -.->|Query| CR
+    S3 -.->|Query| PR
+    
+    %% Styling
+    classDef admin fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef analyst fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef permission fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef storage fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef service fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+    class LFA,CFN admin
+    class CR,PR analyst
+    class DLA,DB,SEL,DCF permission
+    class S3,ARC,ARP storage
+    class LF,DR,SLR,AWG1,AWG2 service
