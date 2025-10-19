@@ -354,6 +354,7 @@ class OptionAStack(Stack):
         # Outputs
         cdk.CfnOutput(self, "DataLakeBucketName", value=data_lake.bucket_name)
         cdk.CfnOutput(self, "AthenaResultsBucketName", value=athena_results.bucket_name)
+        cdk.CfnOutput(self, "DataLakeKeyArn", value=kms_key.key_arn)
         cdk.CfnOutput(self, "GlueDatabaseName", value="option_a_demo_db")
         cdk.CfnOutput(self, "GlueCrawlerName", value=crawler.name or "option-a-raw-crawler")
         cdk.CfnOutput(self, "WorkGroupName", value=wg_default.name or "option_a_demo_wg")

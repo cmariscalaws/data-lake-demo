@@ -55,6 +55,28 @@ This enables:
 - **Data segregation** via dedicated Athena workgroups  
 - **Fine-grained permissions** managed by Lake Formation
 
+### Testing RBAC
+
+After enabling Lake Formation RBAC, you'll need to set up additional permissions:
+
+1. **Run the setup script**:
+   ```bash
+   chmod +x rbac-demo/setup_rbac_permissions.sh
+   ./rbac-demo/setup_rbac_permissions.sh
+   ```
+
+2. **Test basic RBAC**:
+   ```bash
+   python rbac-demo/test_rbac.py
+   ```
+
+3. **Run advanced RBAC demo**:
+   ```bash
+   python rbac-demo/demo_rbac.py --stack OptionAIngestionDemoPy
+   ```
+
+See [rbac-demo/README.md](../rbac-demo/README.md) for complete RBAC demo guide.
+
 ## Clean up
 ```bash
 cdk destroy

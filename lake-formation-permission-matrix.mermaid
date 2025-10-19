@@ -1,0 +1,106 @@
+graph TB
+    %% Lake Formation Permission Matrix
+    subgraph "Lake Formation Permission Matrix"
+        %% Data Sources
+        subgraph "Data Sources"
+            API1[API-A Data<br/>Non-PII]
+            API2[API-B Data<br/>Non-PII]
+            API3[API-C Data<br/>Contains PII]
+            API4[API-D Data<br/>Contains PII]
+        end
+        
+        %% Glue Tables
+        GT[(Glue Table<br/>All API Data<br/>Partitioned)]
+        
+        %% Data Cells Filter
+        DCF[Data Cells Filter<br/>Row-level Security<br/>api-a AND api-b ONLY]
+        
+        %% Roles and Permissions
+        subgraph "Role Permissions"
+            subgraph "AnalystCoreRole"
+                CR_PERMS[✅ DATA_LOCATION_ACCESS<br/>✅ DESCRIBE Database<br/>✅ SELECT Table<br/>🔒 Row Filter: api-a, api-b<br/>🔒 Column Filter: No 'items'<br/>📊 Workgroup: wg_core_read_demo]
+            end
+            
+            subgraph "AnalystPiiRole"
+                PR_PERMS[✅ DATA_LOCATION_ACCESS<br/>✅ DESCRIBE Database<br/>✅ SELECT Table<br/>✅ All Rows: api-a, api-b, api-c, api-d<br/>✅ All Columns<br/>📊 Workgroup: wg_pii_read_demo]
+            end
+        end
+        
+        %% Query Results
+        subgraph "Query Results"
+            CR_RESULT[Core Role Query Result<br/>📊 2 rows (api-a, api-b)<br/>📊 Limited columns<br/>💾 s3://bucket/core/]
+            PR_RESULT[PII Role Query Result<br/>📊 4 rows (all APIs)<br/>📊 All columns<br/>💾 s3://bucket/pii/]
+        end
+        
+        %% Athena Workgroups
+        AWG1[Athena WorkGroup<br/>wg_core_read_demo<br/>Enforced Configuration]
+        AWG2[Athena WorkGroup<br/>wg_pii_read_demo<br/>Enforced Configuration]
+    end
+
+    %% Data Flow
+    API1 --> GT
+    API2 --> GT
+    API3 --> GT
+    API4 --> GT
+    
+    GT --> DCF
+    DCF -.->|Filtered Access| CR_PERMS
+    GT -.->|Full Access| PR_PERMS
+    
+    CR_PERMS --> AWG1
+    PR_PERMS --> AWG2
+    
+    AWG1 --> CR_RESULT
+    AWG2 --> PR_RESULT
+    
+    %% Permission Details
+    subgraph "Permission Details"
+        subgraph "Core Role Restrictions"
+            CR_ROW[Row-level: WHERE source IN ('api-a', 'api-b')]
+            CR_COL[Column-level: Exclude 'items' column]
+            CR_WG[Workgroup: Enforced configuration<br/>Results in /core/ path]
+        end
+        
+        subgraph "PII Role Access"
+            PR_ROW[Row-level: All rows accessible]
+            PR_COL[Column-level: All columns accessible]
+            PR_WG[Workgroup: Enforced configuration<br/>Results in /pii/ path]
+        end
+    end
+    
+    CR_PERMS -.->|Implements| CR_ROW
+    CR_PERMS -.->|Implements| CR_COL
+    CR_PERMS -.->|Implements| CR_WG
+    
+    PR_PERMS -.->|Implements| PR_ROW
+    PR_PERMS -.->|Implements| PR_COL
+    PR_PERMS -.->|Implements| PR_WG
+    
+    %% Demo Scripts
+    subgraph "Demo Scripts"
+        DEMO[demo_rbac.py<br/>🎭 Demonstrates both roles<br/>📊 Shows different results<br/>🔒 Proves row/column security]
+        TEST[test_rbac.py<br/>🧪 Basic functionality test<br/>✅ Role assumption<br/>✅ Query execution]
+        SETUP[setup_rbac_permissions.sh<br/>⚙️ Automated setup<br/>🔧 Permission configuration]
+    end
+    
+    DEMO -.->|Tests| CR_PERMS
+    DEMO -.->|Tests| PR_PERMS
+    TEST -.->|Validates| CR_PERMS
+    TEST -.->|Validates| PR_PERMS
+    SETUP -.->|Configures| CR_PERMS
+    SETUP -.->|Configures| PR_PERMS
+    
+    %% Styling
+    classDef dataSource fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+    classDef role fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef permission fill:#fff3e0,stroke:#ef6c00,stroke-width:2px
+    classDef result fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef demo fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef restriction fill:#ffebee,stroke:#c62828,stroke-width:2px
+
+    class API1,API2,API3,API4,GT dataSource
+    class CR_PERMS,PR_PERMS role
+    class DCF,AWG1,AWG2 permission
+    class CR_RESULT,PR_RESULT result
+    class DEMO,TEST,SETUP demo
+    class CR_ROW,CR_COL,CR_WG,PR_ROW,PR_COL,PR_WG restriction
