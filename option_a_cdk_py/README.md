@@ -40,6 +40,21 @@ s3://<DataLakeBucket>/raw/source=api-a/ingestion_date=<today>/
 
 Start the **Glue Crawler** or wait for its schedule, then query in **Athena** using the created WorkGroup.
 
+## Lake Formation RBAC Setup
+
+The stack includes Lake Formation RBAC components that are temporarily disabled due to CloudFormation execution role limitations. To enable them:
+
+1. **Follow the detailed guide**: See [LAKE_FORMATION_SETUP.md](./LAKE_FORMATION_SETUP.md)
+2. **Quick steps**:
+   - Add Lake Formation permissions to CDK execution role in AWS Console
+   - Uncomment Lake Formation code in `option_a/stack.py`
+   - Run `cdk deploy --all --require-approval never`
+
+This enables:
+- **Role-based access control** with separate analyst roles
+- **Data segregation** via dedicated Athena workgroups  
+- **Fine-grained permissions** managed by Lake Formation
+
 ## Clean up
 ```bash
 cdk destroy
