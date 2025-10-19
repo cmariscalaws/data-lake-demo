@@ -1,3 +1,17 @@
+"""
+AWS Option A Demo Stack - EventBridge → SQS → Lambda → S3 Data Lake
+
+This stack creates a complete data lake infrastructure with:
+- EventBridge cron triggers → Planner Lambda → SQS queues → Worker Lambda → S3
+- Glue Database + Crawler for data catalog
+- Athena WorkGroup for querying
+- CloudWatch monitoring and alarms
+- Lake Formation RBAC (requires manual setup - see LAKE_FORMATION_SETUP.md)
+
+Lake Formation RBAC is temporarily disabled due to CloudFormation execution role limitations.
+Follow the guide in LAKE_FORMATION_SETUP.md to enable it.
+"""
+
 from typing import Dict
 import json
 
@@ -17,6 +31,7 @@ from aws_cdk import (
     aws_glue as glue,
     aws_athena as athena,
     aws_cloudwatch as cw,
+    aws_lakeformation as lf,
 )
 
 class OptionAStack(Stack):
@@ -178,7 +193,7 @@ class OptionAStack(Stack):
         )
 
         # Athena WorkGroup
-        wg = athena.CfnWorkGroup(
+        wg_default = athena.CfnWorkGroup(
             self, "AthenaWG",
             name="option_a_demo_wg",
             work_group_configuration=athena.CfnWorkGroup.WorkGroupConfigurationProperty(
@@ -191,6 +206,121 @@ class OptionAStack(Stack):
             state="ENABLED",
         )
 
+        # ========== Lake Formation RBAC scaffolding (temporarily disabled) ==========
+        # 
+        # MANUAL SETUP REQUIRED BEFORE ENABLING:
+        # 1. Deploy with only LF admin role first (CFN exec role removed from admins)
+        # 2. After successful deployment, manually add CFN exec role to LF admins:
+        #    - Go to AWS Console → Lake Formation → Settings
+        #    - Add: arn:aws:iam::{account}:role/cdk-hnb659fds-cfn-exec-role-{account}-{region}
+        # 3. Add Lake Formation permissions to CFN exec role in IAM Console
+        # 4. Run: cdk deploy --all --require-approval never
+        #
+        # See LAKE_FORMATION_SETUP.md for detailed step-by-step instructions
+        """
+        # Lake Formation Admin Role - has full permissions to manage LF settings
+        lf_admin_role = iam.Role(self, "LFAdminRole", assumed_by=iam.AccountRootPrincipal())
+        
+        # Demo Analyst Roles - different permission levels for RBAC demonstration
+        analyst_core_role = iam.Role(self, "AnalystCoreRole",
+                                     assumed_by=iam.AccountRootPrincipal(),
+                                     description="Demo analyst role (no PII, limited rows)")
+        analyst_pii_role = iam.Role(self, "AnalystPiiRole",
+                                    assumed_by=iam.AccountRootPrincipal(),
+                                    description="Demo analyst role with PII access")
+
+        # Grant Athena and Glue permissions to analyst roles
+        # Note: Lake Formation will gate actual data access based on LF permissions
+        for r in [analyst_core_role, analyst_pii_role]:
+            r.add_managed_policy(iam.ManagedPolicy.from_aws_managed_policy_name('AmazonAthenaFullAccess'))
+            r.add_to_policy(iam.PolicyStatement(
+                actions=[
+                    "glue:GetDatabase","glue:GetDatabases","glue:GetTable","glue:GetTables",
+                    "glue:GetPartition","glue:GetPartitions",
+                    "lakeformation:GetDataAccess","lakeformation:SearchTablesByLFTags","lakeformation:GetResourceLFTags"
+                ],
+                resources=["*"]
+            ))
+
+        # Register S3 bucket as Lake Formation data location
+        # This allows Lake Formation to manage permissions on the S3 data
+        lf_location = lf.CfnResource(self, "LFDataLocation", resource_arn=data_lake.bucket_arn, use_service_linked_role=True)
+
+        # Configure Lake Formation administrators
+        # IMPORTANT: Only use the admin role initially - CFN execution role needs manual setup
+        lf_admins = [
+            lf.CfnDataLakeSettings.DataLakePrincipalProperty(
+                data_lake_principal_identifier=lf_admin_role.role_arn
+            )
+        ]
+        lf.CfnDataLakeSettings(
+            self, "DataLakeSettings",
+            admins=lf_admins
+        )
+
+        # Grant DATA_LOCATION_ACCESS permission to analyst roles
+        # This allows them to access data in the registered S3 location
+        for r in [analyst_core_role, analyst_pii_role]:
+            lf.CfnPrincipalPermissions(
+                self, f"DataLocAccess{r.node.id}",
+                permissions=["DATA_LOCATION_ACCESS"],
+                permissions_with_grant_option=[],
+                principal=lf.CfnPrincipalPermissions.DataLakePrincipalProperty(
+                    data_lake_principal_identifier=r.role_arn
+                ),
+                resource=lf.CfnPrincipalPermissions.ResourceProperty(
+                    data_location=lf.CfnPrincipalPermissions.DataLocationResourceProperty(
+                        catalog_id=self.account,
+                        resource_arn=data_lake.bucket_arn
+                    )
+                )
+            )
+
+        # Grant DESCRIBE permission on the Glue database
+        # This allows analyst roles to see database metadata
+        for r in [analyst_core_role, analyst_pii_role]:
+            lf.CfnPrincipalPermissions(
+                self, f"DbDescribe{r.node.id}",
+                permissions=["DESCRIBE"],
+                permissions_with_grant_option=[],
+                principal=lf.CfnPrincipalPermissions.DataLakePrincipalProperty(
+                    data_lake_principal_identifier=r.role_arn
+                ),
+                resource=lf.CfnPrincipalPermissions.ResourceProperty(
+                    database=lf.CfnPrincipalPermissions.DatabaseResourceProperty(
+                        name="option_a_demo_db",
+                        catalog_id=self.account
+                    )
+                )
+            )
+
+        # Create separate Athena workgroups for each analyst role
+        # This segregates query results and allows different configurations
+        core_wg = athena.CfnWorkGroup(
+            self, "AthenaCoreWG",
+            name="wg_core_read_demo",
+            work_group_configuration=athena.CfnWorkGroup.WorkGroupConfigurationProperty(
+                result_configuration=athena.CfnWorkGroup.ResultConfigurationProperty(
+                    output_location=f"s3://{athena_results.bucket_name}/core/"
+                ),
+                publish_cloud_watch_metrics_enabled=True,
+                enforce_work_group_configuration=True,
+            ),
+        )
+        pii_wg = athena.CfnWorkGroup(
+            self, "AthenaPiiWG",
+            name="wg_pii_read_demo",
+            work_group_configuration=athena.CfnWorkGroup.WorkGroupConfigurationProperty(
+                result_configuration=athena.CfnWorkGroup.ResultConfigurationProperty(
+                    output_location=f"s3://{athena_results.bucket_name}/pii/"
+                ),
+                publish_cloud_watch_metrics_enabled=True,
+                enforce_work_group_configuration=True,
+            ),
+        )
+        """
+
+        # ========== CloudWatch Alarms (unchanged) ==========
         # CloudWatch Alarms
         for ep, dlq in dlqs.items():
             cw.Alarm(
@@ -226,6 +356,13 @@ class OptionAStack(Stack):
         cdk.CfnOutput(self, "AthenaResultsBucketName", value=athena_results.bucket_name)
         cdk.CfnOutput(self, "GlueDatabaseName", value="option_a_demo_db")
         cdk.CfnOutput(self, "GlueCrawlerName", value=crawler.name or "option-a-raw-crawler")
-        cdk.CfnOutput(self, "WorkGroupName", value=wg.name or "option_a_demo_wg")
+        cdk.CfnOutput(self, "WorkGroupName", value=wg_default.name or "option_a_demo_wg")
         cdk.CfnOutput(self, "PlannerFunctionName", value=planner_fn.function_name)
         cdk.CfnOutput(self, "WorkerFunctionName", value=worker_fn.function_name)
+        
+        # Lake Formation RBAC outputs (uncomment when LF RBAC is enabled)
+        # cdk.CfnOutput(self, "AnalystCoreRoleArn", value=analyst_core_role.role_arn)
+        # cdk.CfnOutput(self, "AnalystPiiRoleArn", value=analyst_pii_role.role_arn)
+        # cdk.CfnOutput(self, "LFAdminRoleArn", value=lf_admin_role.role_arn)
+        # cdk.CfnOutput(self, "AthenaCoreWGOutput", value=core_wg.name or "wg_core_read_demo")
+        # cdk.CfnOutput(self, "AthenaPiiWGOutput", value=pii_wg.name or "wg_pii_read_demo")
