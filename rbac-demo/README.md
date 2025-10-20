@@ -89,12 +89,234 @@ The setup script automatically configures:
 - **Workgroup**: `wg_core_read_demo`
 - **S3 Results**: `s3://athena-results-bucket/core/`
 - **Permissions**: Row and column restrictions via Lake Formation
+- **Data Access**: Only `api-a` endpoint data (20 records)
+- **Column Access**: Cannot access `items` column (PII data)
 
 ### PII Role (`AnalystPiiRole`)
 - **Purpose**: Full access including PII data
 - **Workgroup**: `wg_pii_read_demo`
 - **S3 Results**: `s3://athena-results-bucket/pii/`
 - **Permissions**: Full table access
+- **Data Access**: All endpoints (`api-a`, `api-b`, `api-c`, `api-d`) - 80 records
+- **Column Access**: Can access all columns including `items`
+
+## 🔧 Manual Lake Formation RBAC Setup
+
+### Prerequisites
+- ✅ CDK stack deployed with Lake Formation RBAC enabled
+- ✅ Data ingested and Glue crawler run
+- ✅ AWS Console access with appropriate permissions
+- ✅ Glue database: `option_a_demo_db`
+- ✅ Glue table: `raw` (with columns: `endpoint`, `date`, `page`, `fetched_at`, `items`)
+
+### Step 1: Register Glue Resources with Lake Formation
+
+#### 1.1 Register Glue Database
+1. **AWS Console** → **Lake Formation** → **Administration** → **Data lake locations**
+2. Click **"Register location"**
+3. **Resource type**: Database
+4. **Database**: `option_a_demo_db`
+5. **IAM role**: `OptionAIngestionDemoPy-LFAdminRoleE5DF1BFB-fZnZVF27Yd2E`
+6. Click **"Register location"**
+
+#### 1.2 Register Glue Table
+1. **AWS Console** → **Lake Formation** → **Administration** → **Data lake locations**
+2. Click **"Register location"**
+3. **Resource type**: Table
+4. **Database**: `option_a_demo_db`
+5. **Table**: `raw`
+6. **IAM role**: `OptionAIngestionDemoPy-LFAdminRoleE5DF1BFB-fZnZVF27Yd2E`
+7. Click **"Register location"**
+
+### Step 2: Create Data Cells Filter for Row-Level Security
+
+#### 2.1 Create Row Filter
+1. **AWS Console** → **Lake Formation** → **Administration** → **Data filters**
+2. Click **"Create filter"**
+3. **Table**: `option_a_demo_db.raw`
+4. **Filter name**: `core_role_filter`
+5. **Row filter expression**: `endpoint = 'api-a'`
+6. **Columns**: Select `endpoint`, `date`, `page`, `fetched_at` (exclude `items`)
+7. Click **"Create filter"**
+
+### Step 3: Grant Lake Formation Permissions
+
+#### 3.1 Grant Core Role Permissions (Limited Access)
+1. **AWS Console** → **Lake Formation** → **Permissions** → **Data permissions**
+2. Click **"Grant permissions"**
+3. **Principal**: `OptionAIngestionDemoPy-AnalystCoreRoleF1795BD7-UFQUIDydLNMa`
+4. **Resource**: `option_a_demo_db.raw`
+5. **Columns**: Select `endpoint`, `date`, `page`, `fetched_at` (exclude `items`)
+6. **Permissions**: `SELECT`
+7. **Data filter**: `core_role_filter`
+8. Click **"Grant"**
+
+#### 3.2 Grant PII Role Permissions (Full Access)
+1. **AWS Console** → **Lake Formation** → **Permissions** → **Data permissions**
+2. Click **"Grant permissions"**
+3. **Principal**: `OptionAIngestionDemoPy-AnalystPiiRole0E9F1092-qj0y9WP3JMLG`
+4. **Resource**: `option_a_demo_db.raw`
+5. **Columns**: Select all columns (including `items`)
+6. **Permissions**: `SELECT`
+7. Click **"Grant"**
+
+### Step 4: Configure Lake Formation Settings
+
+#### 4.1 Set Default Permissions
+1. **AWS Console** → **Lake Formation** → **Administration** → **Settings**
+2. **Create table default permissions**: Empty (no default permissions)
+3. **Create database default permissions**: Empty (no default permissions)
+4. Click **"Save"**
+
+#### 4.2 Add Lake Formation Administrators
+1. **AWS Console** → **Lake Formation** → **Administration** → **Settings**
+2. **Data lake administrators**: Add your AWS user account
+3. **Data lake administrators**: Add `OptionAIngestionDemoPy-LFAdminRoleE5DF1BFB-fZnZVF27Yd2E`
+4. Click **"Save"**
+
+### Step 5: Configure IAM Permissions
+
+#### 5.1 Core Role S3 Permissions
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4/core/*",
+                "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4"
+        }
+    ]
+}
+```
+
+#### 5.2 PII Role S3 Permissions
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4/pii/*",
+                "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetBucketLocation"
+            ],
+            "Resource": "arn:aws:s3:::optionaingestiondemopy-athenaresultsbucket879938fa-vegnrliagxy4"
+        }
+    ]
+}
+```
+
+#### 5.3 Athena Permissions (Both Roles)
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "athena:StartQueryExecution",
+                "athena:StopQueryExecution",
+                "athena:GetQueryExecution",
+                "athena:GetQueryResults",
+                "athena:GetWorkGroup",
+                "athena:ListQueryExecutions",
+                "athena:ListWorkGroups"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "glue:GetDatabase",
+                "glue:GetDatabases",
+                "glue:GetTable",
+                "glue:GetTables",
+                "glue:GetPartition",
+                "glue:GetPartitions"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lakeformation:GetDataAccess",
+                "lakeformation:SearchTablesByLFTags",
+                "lakeformation:GetResourceLFTags"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
+
+### Step 6: Verify Setup
+
+#### 6.1 Test Row-Level Security
+```bash
+# Run the comprehensive demo
+python comprehensive_rbac_demo.py
+```
+
+**Expected Results:**
+- **Core Role**: Only sees `api-a` data (20 records)
+- **PII Role**: Sees all endpoints (80 records)
+
+#### 6.2 Test Column-Level Security
+**Expected Results:**
+- **Core Role**: Cannot access `items` column (query fails)
+- **PII Role**: Can access `items` column (query succeeds)
+
+### Step 7: Troubleshooting
+
+#### 7.1 Common Issues
+1. **"Resource does not exist"**: Glue resources not registered with Lake Formation
+2. **"Insufficient permissions"**: Missing Lake Formation administrator permissions
+3. **"Access denied"**: Missing S3 or KMS permissions for Athena results
+4. **Identical results**: Lake Formation permissions not properly configured
+
+#### 7.2 Verification Commands
+```bash
+# Check registered resources
+aws lakeformation list-resources --output table
+
+# Check Data Cells Filters
+aws lakeformation list-data-cells-filter --output table
+
+# Check Lake Formation settings
+aws lakeformation get-data-lake-settings --output json
+
+# Check role permissions
+aws iam list-attached-role-policies --role-name OptionAIngestionDemoPy-AnalystCoreRoleF1795BD7-UFQUIDydLNMa
+aws iam list-attached-role-policies --role-name OptionAIngestionDemoPy-AnalystPiiRole0E9F1092-qj0y9WP3JMLG
+```
 
 ## 🛠️ Troubleshooting
 
