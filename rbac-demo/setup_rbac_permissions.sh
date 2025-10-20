@@ -182,15 +182,111 @@ aws iam put-role-policy --role-name $PII_ROLE --policy-name KMSAccess --policy-d
 }"
 echo "✅ PII role KMS permissions updated"
 
+# 7. Add Athena permissions to Core role
 echo ""
-echo "🎉 All permissions have been set up successfully!"
+echo "🔧 Step 7: Adding Athena permissions to Core role..."
+aws iam put-role-policy --role-name $CORE_ROLE --policy-name AthenaAccess --policy-document '{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetWorkGroup",
+        "athena:ListQueryExecutions",
+        "athena:ListWorkGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:GetPartition",
+        "glue:GetPartitions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lakeformation:GetDataAccess",
+        "lakeformation:SearchTablesByLFTags",
+        "lakeformation:GetResourceLFTags"
+      ],
+      "Resource": "*"
+    }
+  ]
+}'
+echo "✅ Core role Athena permissions updated"
+
+# 8. Add Athena permissions to PII role
+echo ""
+echo "🔧 Step 8: Adding Athena permissions to PII role..."
+aws iam put-role-policy --role-name $PII_ROLE --policy-name AthenaAccess --policy-document '{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "athena:StartQueryExecution",
+        "athena:StopQueryExecution",
+        "athena:GetQueryExecution",
+        "athena:GetQueryResults",
+        "athena:GetWorkGroup",
+        "athena:ListQueryExecutions",
+        "athena:ListWorkGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "glue:GetDatabase",
+        "glue:GetDatabases",
+        "glue:GetTable",
+        "glue:GetTables",
+        "glue:GetPartition",
+        "glue:GetPartitions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "lakeformation:GetDataAccess",
+        "lakeformation:SearchTablesByLFTags",
+        "lakeformation:GetResourceLFTags"
+      ],
+      "Resource": "*"
+    }
+  ]
+}'
+echo "✅ PII role Athena permissions updated"
+
+echo ""
+echo "🎉 All IAM permissions have been set up successfully!"
 echo ""
 echo "📋 Next steps:"
-echo "1. Test basic RBAC: python scripts/test_rbac.py"
-echo "2. Run advanced demo: python scripts/demo_rbac.py --stack $STACK_NAME"
+echo "1. Complete Lake Formation setup in AWS Console (see README.md for details)"
+echo "2. Run comprehensive demo: python comprehensive_rbac_demo.py"
+echo ""
+echo "⚠️  IMPORTANT: This script only sets up IAM permissions."
+echo "   You still need to complete the Lake Formation console setup:"
+echo "   - Register Glue database and table with Lake Formation"
+echo "   - Create Data Cells Filter for row-level security"
+echo "   - Grant Lake Formation permissions to roles"
+echo "   - Configure Lake Formation settings"
 echo ""
 echo "🔍 What was configured:"
 echo "- KMS permissions for Lake Formation service-linked role"
 echo "- Lake Formation admin permissions"
 echo "- S3 and KMS permissions for both analyst roles"
+echo "- Athena and Glue permissions for both analyst roles"
 echo "- Segregated S3 access (Core: /core/, PII: /pii/)"
