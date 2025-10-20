@@ -12,7 +12,6 @@ This folder contains all the files needed to demonstrate and test Lake Formation
 
 ### 🔧 Setup & Testing
 - **`setup_rbac_permissions.sh`** - Automated permission configuration script
-- **`test_rbac.py`** - Basic RBAC functionality test
 
 ## 🎭 Main Demo
 
@@ -47,16 +46,7 @@ Make sure you have:
 - ✅ Data ingested and Glue crawler run
 - ✅ AWS CLI configured with appropriate permissions
 
-### 2. Setup Permissions
-```bash
-# Make setup script executable
-chmod +x setup_rbac_permissions.sh
-
-# Run automated setup
-./setup_rbac_permissions.sh [STACK_NAME]
-```
-
-### 3. Run the Main Demo
+### 2. Run the Main Demo
 ```bash
 python comprehensive_rbac_demo.py
 ```
