@@ -5,9 +5,7 @@ This folder contains all the files needed to demonstrate and test Lake Formation
 ## 📁 Files Overview
 
 ### 📋 Documentation
-- **`README.md`** - This overview file
-- **`DEMO_RBAC_README.md`** - Complete setup and usage guide
-- **`INDEX.md`** - File navigation
+- **`README.md`** - Complete setup and usage guide
 
 ### 🎭 Demo Script
 - **`comprehensive_rbac_demo.py`** - **MAIN DEMO** - Complete RBAC validation with row/column-level security
