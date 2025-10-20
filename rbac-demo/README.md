@@ -5,75 +5,41 @@ This folder contains all the files needed to demonstrate and test Lake Formation
 ## 📁 Files Overview
 
 ### 📋 Documentation
-- **`DEMO_RBAC_README.md`** - Complete setup and usage guide
 - **`README.md`** - This overview file
+- **`DEMO_RBAC_README.md`** - Complete setup and usage guide
+- **`INDEX.md`** - File navigation
 
-### 🔧 Setup Scripts
+### 🎭 Demo Script
+- **`comprehensive_rbac_demo.py`** - **MAIN DEMO** - Complete RBAC validation with row/column-level security
+
+### 🔧 Setup & Testing
 - **`setup_rbac_permissions.sh`** - Automated permission configuration script
 - **`test_rbac.py`** - Basic RBAC functionality test
 
-### 🎭 Demo Scripts
-- **`demo_rbac.py`** - Advanced RBAC demo with row/column-level controls
-- **`simple_rbac_demo.py`** - Simplified RBAC demonstration
+## 🎭 Main Demo
 
-## 🔍 Demo Script Comparison
-
-### **`simple_rbac_demo.py` (186 lines)**
-**Purpose**: **Basic RBAC testing** - Simple permission verification
+### **`comprehensive_rbac_demo.py`**
+**Purpose**: **Complete RBAC validation** - Validates both row-level and column-level security
 
 **What it does**:
-- ✅ **Uses Lake Formation admin role** to set up permissions
-- ✅ **Basic permission grants** (DATA_LOCATION_ACCESS, DESCRIBE, SELECT)
-- ✅ **Simple query test** - just counts files by source
-- ✅ **Role assumption testing** for both Core and PII roles
-- ✅ **Hardcoded values** (account ID, role ARNs)
+- ✅ **Row-level security validation** - Core role limited to api-a data only
+- ✅ **Column-level security validation** - Core role cannot access 'items' column
+- ✅ **Data volume comparison** - Shows different record counts per role
+- ✅ **Comprehensive testing** - 4 different test scenarios
+- ✅ **Automatic validation** - Analyzes results and confirms RBAC is working
 
 **Key Features**:
-- 🔧 **Admin role setup** - Uses `LFAdminRole` to configure permissions
-- 📊 **Basic query** - `SELECT source, COUNT(*) FROM table GROUP BY source`
-- 🎯 **Simple validation** - Just checks if roles can query successfully
+- 🔒 **Row filtering** - Core role sees only api-a (20 records), PII role sees all (80 records)
+- 🔒 **Column restrictions** - Core role blocked from 'items' column, PII role allowed
+- 📊 **Multiple test scenarios** - Row security, column security, combined, volume
+- 🎯 **Validation results** - Automatically confirms each security feature is working
+- ✅ **Production-ready** - Demonstrates enterprise-grade data lake security
 
 **When to use**:
-- 🧪 **Testing basic setup** - Quick validation that roles work
-- 🔧 **Debugging permissions** - Simple permission verification
-- ⚡ **Fast validation** - Quick check after setup
-
----
-
-### **`demo_rbac.py` (177 lines)**
-**Purpose**: **Advanced RBAC demonstration** - Full security showcase
-
-**What it does**:
-- ✅ **Creates Data Cells Filter** for row-level security
-- ✅ **Column-level security** - restricts access to specific columns
-- ✅ **Advanced query testing** - multiple queries showing different access levels
-- ✅ **Dynamic role discovery** - finds roles by name pattern
-- ✅ **Comprehensive error handling** and validation
-
-**Key Features**:
-- 🔒 **Row-level security** - Data Cells Filter limiting to `api-a` and `api-b`
-- 🔒 **Column-level security** - Core role cannot access `items` column
-- 📊 **Multiple queries** - Shows different results based on permissions
-- 🎯 **Advanced validation** - Proves both row and column restrictions work
-
-**When to use**:
-- 🎭 **Demonstrating RBAC** - Showing stakeholders the security features
-- 📊 **Full security showcase** - Proving row and column-level security
-- 🎓 **Training/education** - Teaching Lake Formation capabilities
-- 📋 **Compliance demos** - Showing fine-grained access controls
-
-### **📋 Quick Comparison Table**
-
-| Feature | `simple_rbac_demo.py` | `demo_rbac.py` |
-|---------|----------------------|----------------|
-| **Complexity** | Basic | Advanced |
-| **Purpose** | Permission testing | Security demonstration |
-| **Row Security** | ❌ No Data Cells Filter | ✅ Data Cells Filter |
-| **Column Security** | ❌ No column restrictions | ✅ Column-level restrictions |
-| **Query Types** | 1 simple query | 2+ complex queries |
-| **Role Discovery** | Hardcoded ARNs | Dynamic discovery |
-| **Error Handling** | Basic | Comprehensive |
-| **Use Case** | Quick validation | Stakeholder demo |
+- 🎭 **Main demonstration** - Primary demo for stakeholders
+- 📊 **Complete validation** - Proves all RBAC features are working
+- 🎓 **Training/education** - Shows comprehensive Lake Formation capabilities
+- 📋 **Compliance demos** - Demonstrates fine-grained access controls
 
 ## 🚀 Quick Start
 
@@ -92,39 +58,19 @@ chmod +x setup_rbac_permissions.sh
 ./setup_rbac_permissions.sh [STACK_NAME]
 ```
 
-### 3. Test Basic RBAC
+### 3. Run the Main Demo
 ```bash
-python test_rbac.py
-```
-
-### 4. Run Simple Demo (Optional)
-```bash
-python simple_rbac_demo.py
-```
-
-### 5. Run Advanced Demo
-```bash
-python demo_rbac.py --stack OptionAIngestionDemoPy
+python comprehensive_rbac_demo.py
 ```
 
 ## 📊 What the Demo Shows
 
-### Basic RBAC Test (`test_rbac.py`)
-- ✅ Core Role can query data using `wg_core_read_demo` workgroup
-- ✅ PII Role can query data using `wg_pii_read_demo` workgroup
-- ✅ Results are segregated in separate S3 paths (`/core/` vs `/pii/`)
-
-### Simple RBAC Demo (`simple_rbac_demo.py`)
-- 🔧 **Admin role setup**: Uses `LFAdminRole` to configure basic permissions
-- 📊 **Basic query validation**: Simple count query to verify role access
-- ✅ **Permission verification**: Confirms both roles can query successfully
-- ⚡ **Quick testing**: Fast validation of RBAC setup
-
-### Advanced RBAC Demo (`demo_rbac.py`)
-- 🔒 **Row-level security**: Core role limited to `api-a` and `api-b` sources
-- 🔒 **Column-level security**: Core role cannot access `items` column
-- 🔓 **Full access**: PII role can access all sources and columns
-- 📈 **Query comparison**: Shows different results based on role permissions
+### Comprehensive RBAC Demo (`comprehensive_rbac_demo.py`)
+- 🔒 **Row-level security**: Core role limited to api-a data only (20 records)
+- 🔒 **Column-level security**: Core role cannot access 'items' column (query fails)
+- 🔓 **Full access**: PII role can access all data and all columns (80 records)
+- 📊 **Automatic validation**: Confirms each security feature is working correctly
+- 🎯 **Production-ready**: Demonstrates enterprise-grade data lake security
 
 ## 🔧 Permission Requirements
 

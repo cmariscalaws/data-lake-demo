@@ -206,7 +206,7 @@ class OptionAStack(Stack):
             state="ENABLED",
         )
 
-        # ========== Lake Formation RBAC scaffolding (temporarily disabled) ==========
+        # ========== Lake Formation RBAC scaffolding ==========
         # 
         # MANUAL SETUP REQUIRED BEFORE ENABLING:
         # 1. Deploy with only LF admin role first (CFN exec role removed from admins)
@@ -217,7 +217,7 @@ class OptionAStack(Stack):
         # 4. Run: cdk deploy --all --require-approval never
         #
         # See LAKE_FORMATION_SETUP.md for detailed step-by-step instructions
-        """
+        
         # Lake Formation Admin Role - has full permissions to manage LF settings
         lf_admin_role = iam.Role(self, "LFAdminRole", assumed_by=iam.AccountRootPrincipal())
         
@@ -318,7 +318,6 @@ class OptionAStack(Stack):
                 enforce_work_group_configuration=True,
             ),
         )
-        """
 
         # ========== CloudWatch Alarms (unchanged) ==========
         # CloudWatch Alarms
@@ -361,9 +360,9 @@ class OptionAStack(Stack):
         cdk.CfnOutput(self, "PlannerFunctionName", value=planner_fn.function_name)
         cdk.CfnOutput(self, "WorkerFunctionName", value=worker_fn.function_name)
         
-        # Lake Formation RBAC outputs (uncomment when LF RBAC is enabled)
-        # cdk.CfnOutput(self, "AnalystCoreRoleArn", value=analyst_core_role.role_arn)
-        # cdk.CfnOutput(self, "AnalystPiiRoleArn", value=analyst_pii_role.role_arn)
-        # cdk.CfnOutput(self, "LFAdminRoleArn", value=lf_admin_role.role_arn)
-        # cdk.CfnOutput(self, "AthenaCoreWGOutput", value=core_wg.name or "wg_core_read_demo")
-        # cdk.CfnOutput(self, "AthenaPiiWGOutput", value=pii_wg.name or "wg_pii_read_demo")
+        # Lake Formation RBAC outputs
+        cdk.CfnOutput(self, "AnalystCoreRoleArn", value=analyst_core_role.role_arn)
+        cdk.CfnOutput(self, "AnalystPiiRoleArn", value=analyst_pii_role.role_arn)
+        cdk.CfnOutput(self, "LFAdminRoleArn", value=lf_admin_role.role_arn)
+        cdk.CfnOutput(self, "AthenaCoreWGOutput", value=core_wg.name or "wg_core_read_demo")
+        cdk.CfnOutput(self, "AthenaPiiWGOutput", value=pii_wg.name or "wg_pii_read_demo")
